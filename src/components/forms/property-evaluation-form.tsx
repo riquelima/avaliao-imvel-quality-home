@@ -9,7 +9,6 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Plus, X, Loader2, CheckCircle, AlertCircle } from "lucide-react"
-import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 
 interface FormData {
@@ -115,43 +114,46 @@ export default function PropertyEvaluationForm() {
     setIsSubmitting(true)
 
     try {
-      // Prepare data for Supabase
-      const dataToInsert = {
-        nome_completo: formData.nomeCompleto,
+      // Prepare data for webhook
+      const webhookData = {
+        nomeCompleto: formData.nomeCompleto,
         whatsapp: formData.whatsapp || null,
-        endereco_completo: formData.endereco,
-        tipo_imovel: formData.tipoImovel,
-        area_terreno: formData.areaTerrenoNA ? null : parseFloat(formData.areaTerreno) || null,
-        area_construida: formData.areaConstruidaNA ? null : parseFloat(formData.areaConstruida) || null,
-        area_terreno_na: formData.areaTerrenoNA,
-        area_construida_na: formData.areaConstruidaNA,
-        idade_construcao: formData.idadeConstrucao ? parseInt(formData.idadeConstrucao) : null,
-        estado_geral: formData.estadoGeral,
+        endereco: formData.endereco,
+        tipoImovel: formData.tipoImovel,
+        areaTerreno: formData.areaTerrenoNA ? null : formData.areaTerreno || null,
+        areaConstruida: formData.areaConstruidaNA ? null : formData.areaConstruida || null,
+        areaTerrenoNA: formData.areaTerrenoNA,
+        areaConstruidaNA: formData.areaConstruidaNA,
+        idadeConstrucao: formData.idadeConstrucao || null,
+        estadoGeral: formData.estadoGeral,
         ocupado: formData.ocupado,
-        documentos_disponiveis: formData.documentos,
-        situacao_documentos: formData.situacaoDocumentos,
+        documentos: formData.documentos,
+        situacaoDocumentos: formData.situacaoDocumentos,
         finalidade: formData.finalidade,
-        links_fotos: formData.linksfotos.filter(link => link.trim() !== ""),
-        nome_condominio: formData.condominioNA ? null : formData.nomeCondominio || null,
-        condominio_na: formData.condominioNA,
-        detalhes_adicionais: formData.detalhesAdicionais || null,
-        data_criacao: new Date().toISOString(),
-        data_atualizacao: new Date().toISOString()
+        linksfotos: formData.linksfotos.filter(link => link.trim() !== ""),
+        nomeCondominio: formData.condominioNA ? null : formData.nomeCondominio || null,
+        condominioNA: formData.condominioNA,
+        detalhesAdicionais: formData.detalhesAdicionais || null,
+        dataEnvio: new Date().toISOString()
       }
 
-      const { data, error } = await supabase
-        .from('avaliacoes_imoveis')
-        .insert([dataToInsert])
-        .select()
+      // Send to webhook
+      const response = await fetch('https://primary-production-76569.up.railway.app/webhook/formulario', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(webhookData)
+      })
 
-      if (error) {
-        console.error('Erro ao salvar avaliação:', error)
-        toast.error("Erro ao salvar avaliação. Verifique os dados e tente novamente.")
-        return
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      console.log('Avaliação salva com sucesso:', data)
-      toast.success("Avaliação salva com sucesso! Entraremos em contato em breve.")
+      const result = await response.json()
+      console.log('Webhook response:', result)
+      
+      toast.success("Avaliação enviada com sucesso! Entraremos em contato em breve.")
       
       // Reset form
       setFormData({
@@ -176,8 +178,8 @@ export default function PropertyEvaluationForm() {
       })
 
     } catch (error) {
-      console.error('Erro inesperado:', error)
-      toast.error("Erro inesperado. Tente novamente.")
+      console.error('Erro ao enviar para o webhook:', error)
+      toast.error("Erro ao enviar avaliação. Verifique sua conexão e tente novamente.")
     } finally {
       setIsSubmitting(false)
     }
