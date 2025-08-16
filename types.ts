@@ -66,16 +66,16 @@ export interface Database {
           area_terreno_na: boolean;
           area_construida?: number | null;
           area_construida_na: boolean;
-          idade_construcao: number | null;
+          idade_construcao?: number | null;
           estado_geral: string;
           ocupado: string;
-          documentos_disponiveis: string[] | null;
+          documentos_disponiveis?: string[] | null;
           situacao_documentos: string;
           finalidade: string;
-          links_fotos: string[] | null;
+          links_fotos?: string[] | null;
           nome_condominio?: string | null;
           condominio_na: boolean;
-          detalhes_adicionais: string | null;
+          detalhes_adicionais?: string | null;
         };
         Update: {
           id?: number;
