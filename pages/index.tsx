@@ -137,6 +137,7 @@ const HomePage: React.FC = () => {
         area_construida: areaConstruidaNum,
         area_construida_na: areaConstruidaNum === null,
         idade_construcao: idadeConstrucaoNum,
+        idade_construcao_na: idadeConstrucaoNum === null,
         estado_geral: estadoGeral,
         ocupado: ocupacao.toLowerCase(),
         documentos_disponiveis: documentos_disponiveis_arr,
@@ -150,7 +151,7 @@ const HomePage: React.FC = () => {
       
       const { error } = await supabase
         .from('avaliacoes_imoveis')
-        .insert([dataToSubmit]);
+        .insert(dataToSubmit);
 
       if (error) {
         throw error;

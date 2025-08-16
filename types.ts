@@ -45,6 +45,7 @@ export interface Database {
           area_construida: number | null;
           area_construida_na: boolean;
           idade_construcao: number | null;
+          idade_construcao_na: boolean;
           estado_geral: string;
           ocupado: string;
           documentos_disponiveis: string[] | null;
@@ -67,6 +68,7 @@ export interface Database {
           area_construida?: number | null;
           area_construida_na: boolean;
           idade_construcao?: number | null;
+          idade_construcao_na: boolean;
           estado_geral: string;
           ocupado: string;
           documentos_disponiveis?: string[] | null;
@@ -89,6 +91,7 @@ export interface Database {
           area_construida?: number | null;
           area_construida_na?: boolean;
           idade_construcao?: number | null;
+          idade_construcao_na?: boolean;
           estado_geral?: string;
           ocupado?: string;
           documentos_disponiveis?: string[] | null;
