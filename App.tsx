@@ -62,9 +62,9 @@ const App: React.FC = () => {
     e.preventDefault();
     setFormStatus({ type: 'loading', message: 'Enviando...' });
 
+    // This object matches the Supabase table schema provided in the image.
     const submissionData = {
-        nome_solicitante: formData.nomeSolicitante,
-        whatsapp: formData.whatsapp,
+        nome_completo: formData.nomeSolicitante, // Corrected column name from 'nome_solicitante'
         endereco_completo: `${formData.logradouro}, nº ${formData.numero}, ${formData.bairro}, ${formData.cidade} - ${formData.uf}, CEP: ${formData.cep}`,
         tipo_imovel: formData.tipoImovel,
         area_terreno: formData.areaTerrenoNA ? null : Number(formData.areaTerreno) || null,
@@ -80,7 +80,8 @@ const App: React.FC = () => {
         links_fotos: formData.linksFotos.split('\n').filter(link => link.trim() !== ''),
         nome_condominio: formData.condominioNA ? null : formData.nomeCondominio,
         condominio_na: formData.condominioNA,
-        detalhes_adicionais: formData.detalhesAdicionais,
+        // The 'whatsapp' field is not in the schema, so we prepend it to 'detalhes_adicionais' to avoid losing the data.
+        detalhes_adicionais: `Whatsapp: ${formData.whatsapp}${formData.detalhesAdicionais ? `\n\n${formData.detalhesAdicionais}` : ''}`,
     };
     
     // The correct table name is 'avaliacoes_imoveis'
