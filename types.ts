@@ -2,6 +2,7 @@
 export interface FormData {
   nomeSolicitante: string;
   whatsapp: string;
+  tipoCliente: 'proprietario' | 'corretor_com_cnai' | 'corretor_sem_cnai' | 'advogado' | '';
   logradouro: string;
   numero: string;
   bairro: string;

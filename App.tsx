@@ -2,13 +2,14 @@
 import React, { useState, useCallback } from 'react';
 import { supabase } from './services/supabaseClient';
 import { FormData, FormStatus } from './types';
-import { TIPO_IMOVEL_OPTIONS, SITUACAO_DOCUMENTOS_OPTIONS, FINALIDADE_AVALIACAO_OPTIONS, OCUPADO_OPTIONS, DOCUMENTOS_OPTIONS } from './constants';
+import { TIPO_IMOVEL_OPTIONS, SITUACAO_DOCUMENTOS_OPTIONS, FINALIDADE_AVALIACAO_OPTIONS, OCUPADO_OPTIONS, DOCUMENTOS_OPTIONS, TIPO_CLIENTE_OPTIONS } from './constants';
 import { UserIcon, PhoneIcon, HomeIcon, BuildingIcon, DocumentIcon, CameraIcon, InfoIcon, SpinnerIcon } from './components/Icons';
 import FormControl from './components/FormControl';
 
 const initialFormData: FormData = {
   nomeSolicitante: '',
   whatsapp: '',
+  tipoCliente: '',
   logradouro: '',
   numero: '',
   bairro: '',
@@ -62,9 +63,10 @@ const App: React.FC = () => {
     e.preventDefault();
     setFormStatus({ type: 'loading', message: 'Enviando...' });
 
-    // This object matches the Supabase table schema provided in the image.
+    // This object matches the Supabase table schema, including the new 'tipo_cliente' column.
     const submissionData = {
-        nome_completo: formData.nomeSolicitante, // Corrected column name from 'nome_solicitante'
+        nome_completo: formData.nomeSolicitante,
+        tipo_cliente: formData.tipoCliente, // Mapped to the new database column
         endereco_completo: `${formData.logradouro}, nº ${formData.numero}, ${formData.bairro}, ${formData.cidade} - ${formData.uf}, CEP: ${formData.cep}`,
         tipo_imovel: formData.tipoImovel,
         area_terreno: formData.areaTerrenoNA ? null : Number(formData.areaTerreno) || null,
@@ -80,7 +82,7 @@ const App: React.FC = () => {
         links_fotos: formData.linksFotos.split('\n').filter(link => link.trim() !== ''),
         nome_condominio: formData.condominioNA ? null : formData.nomeCondominio,
         condominio_na: formData.condominioNA,
-        // The 'whatsapp' field is not in the schema, so we prepend it to 'detalhes_adicionais' to avoid losing the data.
+        // The 'whatsapp' field is not in the schema, so we prepend it to 'detalhes_adicionais'.
         detalhes_adicionais: `Whatsapp: ${formData.whatsapp}${formData.detalhesAdicionais ? `\n\n${formData.detalhesAdicionais}` : ''}`,
     };
     
@@ -140,6 +142,14 @@ const App: React.FC = () => {
               <FormControl label="Whatsapp" htmlFor="whatsapp">
                 <input type="tel" id="whatsapp" name="whatsapp" value={formData.whatsapp} onChange={handleChange} className={inputStyles} placeholder="(XX) XXXXX-XXXX" required />
               </FormControl>
+              <div className="md:col-span-2">
+                <FormControl label="Tipo de Cliente" htmlFor="tipoCliente">
+                    <select id="tipoCliente" name="tipoCliente" value={formData.tipoCliente} onChange={handleChange} className={selectStyles} required>
+                        <option value="" disabled>Selecione...</option>
+                        {TIPO_CLIENTE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    </select>
+                </FormControl>
+              </div>
             </div>
           </section>
 

@@ -26,3 +26,10 @@ export const OCUPADO_OPTIONS = [
 ];
 
 export const DOCUMENTOS_OPTIONS = ['Matrícula', 'IPTU', 'Planta', 'Nenhum'];
+
+export const TIPO_CLIENTE_OPTIONS = [
+  { value: 'proprietario', label: 'Proprietário de imóvel' },
+  { value: 'corretor_com_cnai', label: 'Corretor com CNAI' },
+  { value: 'corretor_sem_cnai', label: 'Corretor sem CNAI' },
+  { value: 'advogado', label: 'Advogado' },
+];
