@@ -1,5 +1,5 @@
 {
   "name": "Quality Home Avalia",
-  "description": "Um formulário intuitivo e elegante para coleta de dados para avaliação de imóveis, com um design moderno em modo escuro.",
+  "description": "An elegant and intuitive dark-mode form for submitting real estate appraisal requests to Quality Home Avalia. It captures detailed property information and saves it directly to a Supabase database.",
   "requestFramePermissions": []
 }

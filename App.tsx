@@ -1,360 +1,278 @@
-import React, { useState } from 'react';
-import type { FormData, Database } from './types';
-import { UFS, PROPERTY_TYPES, DOCUMENT_STATUSES, EVALUATION_PURPOSES, OCCUPANCY_STATUSES } from './constants';
-import FormField from './components/FormField';
-import Input from './components/Input';
-import Select from './components/Select';
-import Textarea from './components/Textarea';
-import { supabase } from './lib/supabaseClient';
 
+import React, { useState, useCallback } from 'react';
+import { supabase } from './services/supabaseClient';
+import { FormData, FormStatus } from './types';
+import { TIPO_IMOVEL_OPTIONS, SITUACAO_DOCUMENTOS_OPTIONS, FINALIDADE_AVALIACAO_OPTIONS, OCUPADO_OPTIONS, DOCUMENTOS_OPTIONS } from './constants';
+import { UserIcon, PhoneIcon, HomeIcon, BuildingIcon, DocumentIcon, CameraIcon, InfoIcon, SpinnerIcon } from './components/Icons';
+import FormControl from './components/FormControl';
+
+const initialFormData: FormData = {
+  nomeSolicitante: '',
+  whatsapp: '',
+  logradouro: '',
+  numero: '',
+  bairro: '',
+  cidade: '',
+  uf: '',
+  cep: '',
+  tipoImovel: '',
+  areaTerreno: '',
+  areaTerrenoNA: false,
+  areaConstruida: '',
+  areaConstruidaNA: false,
+  idadeConstrucao: '',
+  estadoGeral: '',
+  documentosDisponiveis: [],
+  situacaoDocumentos: '',
+  finalidade: '',
+  linksFotos: '',
+  ocupado: '',
+  nomeCondominio: '',
+  condominioNA: false,
+  detalhesAdicionais: '',
+};
 
 const App: React.FC = () => {
-  const initialFormData: FormData = {
-    solicitanteNome: '',
-    whatsapp: '',
-    logradouro: '',
-    numero: '',
-    bairro: '',
-    cidade: '',
-    uf: 'SP',
-    cep: '',
-    tipoImovel: 'Urbano',
-    areaTerreno: '',
-    areaConstruida: '',
-    idadeConstrucao: '',
-    estadoGeral: '',
-    documentosDisponiveis: '',
-    situacaoDocumentos: 'Regular',
-    finalidadeAvaliacao: 'Venda',
-    linksFotos: '',
-    ocupacao: 'Desocupado',
-    nomeCondominio: '',
-    detalhesAdicionais: '',
-  };
-
   const [formData, setFormData] = useState<FormData>(initialFormData);
-  const [submissionStatus, setSubmissionStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [formStatus, setFormStatus] = useState<FormStatus>({ type: 'idle', message: '' });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prevState => ({
-      ...prevState,
-      [name]: value,
-    }));
-  };
+    setFormData(prev => ({ ...prev, [name]: value }));
+  }, []);
 
-  const handleWhatsAppChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length > 11) {
-      value = value.slice(0, 11);
-    }
+  const handleCheckboxChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setFormData(prev => ({ ...prev, [name]: checked }));
+  }, []);
 
-    if (value.length > 7) {
-      value = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
-    } else if (value.length > 2) {
-      value = `(${value.slice(0, 2)}) ${value.slice(2)}`;
-    } else if (value.length > 0) {
-      value = `(${value}`;
-    }
-
-    setFormData(prevState => ({
-      ...prevState,
-      whatsapp: value,
-    }));
-  };
+  const handleMultiCheckboxChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value, checked } = e.target;
+    setFormData(prev => {
+        const currentDocs = prev.documentosDisponiveis;
+        if (checked) {
+            return { ...prev, documentosDisponiveis: [...currentDocs, value] };
+        } else {
+            return { ...prev, documentosDisponiveis: currentDocs.filter(doc => doc !== value) };
+        }
+    });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmissionStatus('submitting');
-    setErrorMessage('');
+    setFormStatus({ type: 'loading', message: 'Enviando...' });
 
+    const submissionData = {
+        nome_solicitante: formData.nomeSolicitante,
+        whatsapp: formData.whatsapp,
+        endereco_completo: `${formData.logradouro}, nº ${formData.numero}, ${formData.bairro}, ${formData.cidade} - ${formData.uf}, CEP: ${formData.cep}`,
+        tipo_imovel: formData.tipoImovel,
+        area_terreno: formData.areaTerrenoNA ? null : Number(formData.areaTerreno) || null,
+        area_construida: formData.areaConstruidaNA ? null : Number(formData.areaConstruida) || null,
+        area_terreno_na: formData.areaTerrenoNA,
+        area_construida_na: formData.areaConstruidaNA,
+        idade_construcao: Number(formData.idadeConstrucao) || null,
+        estado_geral: formData.estadoGeral,
+        ocupado: formData.ocupado,
+        documentos_disponiveis: formData.documentosDisponiveis,
+        situacao_documentos: formData.situacaoDocumentos,
+        finalidade: formData.finalidade,
+        links_fotos: formData.linksFotos.split('\n').filter(link => link.trim() !== ''),
+        nome_condominio: formData.condominioNA ? null : formData.nomeCondominio,
+        condominio_na: formData.condominioNA,
+        detalhes_adicionais: formData.detalhesAdicionais,
+    };
+    
+    // The correct table name is 'avaliacoes_imoveis'
+    const { error } = await supabase.from('avaliacoes_imoveis').insert([submissionData]);
+
+    if (error) {
+        setFormStatus({ type: 'error', message: `Erro ao salvar no banco de dados: ${error.message}` });
+        return;
+    }
+
+    // After successful Supabase submission, send to webhook
     try {
-      const {
-        areaTerreno,
-        areaConstruida,
-        idadeConstrucao,
-        logradouro,
-        numero,
-        bairro,
-        cidade,
-        uf,
-        cep,
-        whatsapp,
-        documentosDisponiveis,
-        linksFotos,
-        nomeCondominio,
-        tipoImovel,
-        ocupacao,
-        situacaoDocumentos,
-        finalidadeAvaliacao,
-        solicitanteNome,
-        estadoGeral,
-        detalhesAdicionais,
-      } = formData;
-
-      // Helper function to parse numbers, returning null for invalid/empty inputs
-      const parseNumber = (value: string): number | null => {
-        const cleaned = value.trim().toLowerCase();
-        if (cleaned === '' || cleaned === 'não se aplica') return null;
-        const num = parseFloat(cleaned.replace(',', '.'));
-        return isNaN(num) ? null : num;
-      };
-
-      const areaTerrenoNum = parseNumber(areaTerreno);
-      const areaConstruidaNum = parseNumber(areaConstruida);
-      const idadeConstrucaoNum = parseNumber(idadeConstrucao);
-
-      // Construct full address
-      const endereco_completo = `${logradouro}, ${numero} - ${bairro}, ${cidade} - ${uf}, CEP: ${cep}`;
-      
-      // Sanitize WhatsApp number (store only digits)
-      const whatsapp_clean = whatsapp.replace(/\D/g, '');
-
-      // Split strings into arrays, returning null for empty/whitespace input
-      const splitAndTrim = (str: string): string[] | null => {
-        if (!str || !str.trim()) {
-          return null;
-        }
-        const arr = str.split(',').map(item => item.trim()).filter(Boolean);
-        return arr.length > 0 ? arr : null;
-      };
-      const documentos_disponiveis_arr = splitAndTrim(documentosDisponiveis);
-      const links_fotos_arr = splitAndTrim(linksFotos);
-
-      // Handle optional condo name
-      const nome_condominio_final = nomeCondominio.trim().toLowerCase();
-      const finalCondoName = ['n/a', 'nao se aplica', ''].includes(nome_condominio_final) ? null : nomeCondominio;
-
-      const dataToSubmit: Database['public']['Tables']['avaliacoes_imoveis']['Insert'] = {
-        nome_completo: solicitanteNome,
-        whatsapp: whatsapp_clean,
-        endereco_completo: endereco_completo,
-        tipo_imovel: tipoImovel.toLowerCase(),
-        area_terreno: areaTerrenoNum,
-        area_terreno_na: areaTerrenoNum === null,
-        area_construida: areaConstruidaNum,
-        area_construida_na: areaConstruidaNum === null,
-        idade_construcao: idadeConstrucaoNum,
-        idade_construcao_na: idadeConstrucaoNum === null,
-        estado_geral: estadoGeral,
-        ocupado: ocupacao.toLowerCase(),
-        documentos_disponiveis: documentos_disponiveis_arr,
-        situacao_documentos: situacaoDocumentos.toLowerCase(),
-        finalidade: finalidadeAvaliacao.toLowerCase(),
-        links_fotos: links_fotos_arr,
-        nome_condominio: finalCondoName,
-        condominio_na: finalCondoName === null,
-        detalhes_adicionais: detalhesAdicionais.trim() || null,
-      };
-      
-      const { error } = await supabase
-        .from('avaliacoes_imoveis')
-        .insert(dataToSubmit);
-
-      if (error) {
-        throw error;
-      }
-
-      // Acionar o webhook após o sucesso do Supabase
-      const webhookUrl = 'https://primary-production-76569.up.railway.app/webhook/formulario';
-      try {
-        const webhookResponse = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(dataToSubmit),
+        const webhookResponse = await fetch('https://primary-production-76569.up.railway.app/webhook/formulario', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(submissionData),
         });
 
         if (!webhookResponse.ok) {
-          // Log do erro sem interromper o fluxo de sucesso do usuário
-          console.error('Webhook failed:', webhookResponse.statusText, await webhookResponse.text());
-        }
-      } catch (webhookError) {
-        console.error('Error calling webhook:', webhookError);
-      }
-
-      setSubmissionStatus('success');
-      setTimeout(() => setSubmissionStatus('idle'), 5000); // Reset after 5 seconds
-      setFormData(initialFormData); // Reset form on success
-    } catch (error: any) {
-      setSubmissionStatus('error');
-      console.error('Supabase submission error:', error);
-
-      let displayMessage = 'Ocorreu um erro inesperado ao enviar o formulário.';
-
-      if (error && error.message) {
-        const lowerCaseMessage = error.message.toLowerCase();
-        if (lowerCaseMessage.includes('failed to fetch')) {
-          displayMessage = "Erro de Conexão: Não foi possível conectar ao servidor. Verifique sua conexão com a internet.";
-        } else if (lowerCaseMessage.includes('invalid api key') || lowerCaseMessage.includes('jwt')) {
-          displayMessage = "Erro de Configuração: A chave de API do Supabase é inválida. Por favor, verifique o arquivo 'lib/supabaseClient.ts'.";
+            // Log webhook error but still show success to the user as the data was saved
+            console.error('Webhook failed:', webhookResponse.statusText);
+            setFormStatus({ type: 'success', message: 'Formulário enviado com sucesso, mas houve um problema na notificação. Já recebemos seus dados.' });
         } else {
-          displayMessage = `Erro no envio: ${error.message}`;
+             setFormStatus({ type: 'success', message: 'Formulário enviado com sucesso! Entraremos em contato em breve.' });
         }
-      } else {
-        // Fallback for non-standard errors
-        displayMessage = 'Ocorreu um erro desconhecido. Verifique o console para mais detalhes.';
-      }
-      
-      setErrorMessage(displayMessage);
+    } catch (webhookError) {
+        console.error('Error sending to webhook:', webhookError);
+        setFormStatus({ type: 'success', message: 'Formulário enviado com sucesso, mas houve um problema na notificação. Já recebemos seus dados.' });
     }
+    
+    setFormData(initialFormData);
   };
-
-  const renderSubmitButtonContent = () => {
-    switch (submissionStatus) {
-      case 'submitting':
-        return (
-          <>
-            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Enviando...
-          </>
-        );
-      case 'success':
-        return 'Enviado com Sucesso!';
-      case 'error':
-        return 'Tentar Novamente';
-      default:
-        return 'Salvar e Enviar Solicitação';
-    }
-  };
+  
+  const inputStyles = "w-full bg-gray-700 border border-gray-600 text-white rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-200 p-2.5";
+  const selectStyles = inputStyles + " appearance-none";
+  const sectionTitleStyles = "text-xl font-bold text-purple-300 border-b-2 border-purple-500/30 pb-2 mb-6 flex items-center gap-3";
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 lg:p-8">
-      <div className="w-full max-w-4xl mx-auto bg-slate-800/60 backdrop-blur-sm rounded-2xl shadow-2xl shadow-slate-900/50 p-6 sm:p-8 md:p-10">
-        <header className="text-center mb-10">
-          <h1 className="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-slate-100 to-cyan-400">
-            Quality Home Avalia
-          </h1>
-          <p className="text-slate-400 mt-2">
-            Preencha o formulário abaixo para solicitar sua avaliação de imóvel.
-          </p>
-        </header>
+    <div className="min-h-screen bg-gray-900 text-gray-200 flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans">
+      <div className="w-full max-w-4xl mx-auto bg-gray-800/50 backdrop-blur-sm p-8 rounded-2xl shadow-2xl shadow-purple-900/20 border border-purple-500/20">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-extrabold text-white">Quality Home Avalia</h1>
+          <p className="text-purple-300 mt-2">Formulário de Solicitação de Avaliação de Imóvel</p>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          
-          <fieldset className="border border-slate-700 rounded-lg p-6">
-            <legend className="px-2 text-lg font-semibold text-cyan-400">Informações do Solicitante</legend>
+          {/* Seção de Contato */}
+          <section>
+            <h2 className={sectionTitleStyles}><UserIcon />Informações do Solicitante</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField label="Nome Completo do Solicitante" htmlFor="solicitanteNome">
-                <Input type="text" id="solicitanteNome" name="solicitanteNome" value={formData.solicitanteNome} onChange={handleChange} required />
-              </FormField>
-              <FormField label="WhatsApp para Contato" htmlFor="whatsapp">
-                <Input type="tel" id="whatsapp" name="whatsapp" value={formData.whatsapp} onChange={handleWhatsAppChange} placeholder="(XX) XXXXX-XXXX" required />
-              </FormField>
+              <FormControl label="Nome Completo do Solicitante" htmlFor="nomeSolicitante">
+                <input type="text" id="nomeSolicitante" name="nomeSolicitante" value={formData.nomeSolicitante} onChange={handleChange} className={inputStyles} required />
+              </FormControl>
+              <FormControl label="Whatsapp" htmlFor="whatsapp">
+                <input type="tel" id="whatsapp" name="whatsapp" value={formData.whatsapp} onChange={handleChange} className={inputStyles} placeholder="(XX) XXXXX-XXXX" required />
+              </FormControl>
             </div>
-          </fieldset>
-          
-          <fieldset className="border border-slate-700 rounded-lg p-6">
-            <legend className="px-2 text-lg font-semibold text-cyan-400">Endereço do Imóvel</legend>
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
-                <FormField label="Logradouro" htmlFor="logradouro" className="md:col-span-4">
-                  <Input type="text" id="logradouro" name="logradouro" value={formData.logradouro} onChange={handleChange} required />
-                </FormField>
-                <FormField label="Número" htmlFor="numero" className="md:col-span-2">
-                  <Input type="text" id="numero" name="numero" value={formData.numero} onChange={handleChange} required />
-                </FormField>
-                <FormField label="Bairro" htmlFor="bairro" className="md:col-span-3">
-                  <Input type="text" id="bairro" name="bairro" value={formData.bairro} onChange={handleChange} required />
-                </FormField>
-                <FormField label="Cidade" htmlFor="cidade" className="md:col-span-3">
-                  <Input type="text" id="cidade" name="cidade" value={formData.cidade} onChange={handleChange} required />
-                </FormField>
-                <FormField label="UF" htmlFor="uf" className="md:col-span-1">
-                  <Select id="uf" name="uf" value={formData.uf} onChange={handleChange} required>
-                    {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-                  </Select>
-                </FormField>
-                <FormField label="CEP" htmlFor="cep" className="md:col-span-2">
-                  <Input type="text" id="cep" name="cep" value={formData.cep} onChange={handleChange} required />
-                </FormField>
-            </div>
-          </fieldset>
+          </section>
 
-          <fieldset className="border border-slate-700 rounded-lg p-6">
-            <legend className="px-2 text-lg font-semibold text-cyan-400">Detalhes do Imóvel</legend>
+          {/* Seção de Endereço */}
+          <section>
+            <h2 className={sectionTitleStyles}><HomeIcon />Endereço do Imóvel</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <FormControl label="Logradouro (Rua, Av.)" htmlFor="logradouro">
+                  <input type="text" id="logradouro" name="logradouro" value={formData.logradouro} onChange={handleChange} className={inputStyles} required />
+                </FormControl>
+              </div>
+              <FormControl label="Número" htmlFor="numero">
+                <input type="text" id="numero" name="numero" value={formData.numero} onChange={handleChange} className={inputStyles} required />
+              </FormControl>
+              <FormControl label="Bairro" htmlFor="bairro">
+                <input type="text" id="bairro" name="bairro" value={formData.bairro} onChange={handleChange} className={inputStyles} required />
+              </FormControl>
+              <FormControl label="Cidade" htmlFor="cidade">
+                <input type="text" id="cidade" name="cidade" value={formData.cidade} onChange={handleChange} className={inputStyles} required />
+              </FormControl>
+              <div className="grid grid-cols-2 gap-4">
+                 <FormControl label="UF" htmlFor="uf">
+                  <input type="text" id="uf" name="uf" value={formData.uf} onChange={handleChange} className={inputStyles} maxLength={2} required />
+                </FormControl>
+                <FormControl label="CEP" htmlFor="cep">
+                  <input type="text" id="cep" name="cep" value={formData.cep} onChange={handleChange} className={inputStyles} required />
+                </FormControl>
+              </div>
+            </div>
+          </section>
+
+          {/* Detalhes do Imóvel */}
+          <section>
+             <h2 className={sectionTitleStyles}><BuildingIcon />Detalhes do Imóvel</h2>
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
+                <FormControl label="Tipo de Imóvel" htmlFor="tipoImovel">
+                    <select id="tipoImovel" name="tipoImovel" value={formData.tipoImovel} onChange={handleChange} className={selectStyles} required>
+                        <option value="" disabled>Selecione...</option>
+                        {TIPO_IMOVEL_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    </select>
+                </FormControl>
+                <FormControl label="Área do Terreno (m²)" htmlFor="areaTerreno">
+                  <input type="number" id="areaTerreno" name="areaTerreno" value={formData.areaTerreno} onChange={handleChange} className={inputStyles} disabled={formData.areaTerrenoNA} />
+                   <div className="flex items-center mt-2">
+                      <input type="checkbox" id="areaTerrenoNA" name="areaTerrenoNA" checked={formData.areaTerrenoNA} onChange={handleCheckboxChange} className="h-4 w-4 rounded border-gray-500 text-purple-600 focus:ring-purple-500" />
+                      <label htmlFor="areaTerrenoNA" className="ml-2 block text-sm text-gray-300">Não se aplica</label>
+                  </div>
+                </FormControl>
+                 <FormControl label="Área Construída (m²)" htmlFor="areaConstruida">
+                    <input type="number" id="areaConstruida" name="areaConstruida" value={formData.areaConstruida} onChange={handleChange} className={inputStyles} disabled={formData.areaConstruidaNA} />
+                    <div className="flex items-center mt-2">
+                       <input type="checkbox" id="areaConstruidaNA" name="areaConstruidaNA" checked={formData.areaConstruidaNA} onChange={handleCheckboxChange} className="h-4 w-4 rounded border-gray-500 text-purple-600 focus:ring-purple-500" />
+                       <label htmlFor="areaConstruidaNA" className="ml-2 block text-sm text-gray-300">Não se aplica</label>
+                   </div>
+                 </FormControl>
+                 <FormControl label="Idade da Construção (anos)" htmlFor="idadeConstrucao">
+                    <input type="number" id="idadeConstrucao" name="idadeConstrucao" value={formData.idadeConstrucao} onChange={handleChange} className={inputStyles} placeholder="Aproximada" />
+                </FormControl>
+                <FormControl label="Ocupação" htmlFor="ocupado">
+                    <select id="ocupado" name="ocupado" value={formData.ocupado} onChange={handleChange} className={selectStyles} required>
+                        <option value="" disabled>Selecione...</option>
+                        {OCUPADO_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    </select>
+                </FormControl>
+                <FormControl label="Nome do Condomínio" htmlFor="nomeCondominio">
+                    <input type="text" id="nomeCondominio" name="nomeCondominio" value={formData.nomeCondominio} onChange={handleChange} className={inputStyles} disabled={formData.condominioNA} />
+                    <div className="flex items-center mt-2">
+                        <input type="checkbox" id="condominioNA" name="condominioNA" checked={formData.condominioNA} onChange={handleCheckboxChange} className="h-4 w-4 rounded border-gray-500 text-purple-600 focus:ring-purple-500" />
+                        <label htmlFor="condominioNA" className="ml-2 block text-sm text-gray-300">Não se aplica</label>
+                    </div>
+                </FormControl>
+                <div className="md:col-span-2 lg:col-span-3">
+                  <FormControl label="Estado Geral do Imóvel" htmlFor="estadoGeral">
+                      <textarea id="estadoGeral" name="estadoGeral" value={formData.estadoGeral} onChange={handleChange} rows={3} className={inputStyles} placeholder="Descrição das condições gerais, como pintura, estrutura, acabamentos, etc."></textarea>
+                  </FormControl>
+                </div>
+             </div>
+          </section>
+
+          {/* Documentação */}
+          <section>
+            <h2 className={sectionTitleStyles}><DocumentIcon />Documentação e Finalidade</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <FormField label="Tipo de Imóvel" htmlFor="tipoImovel">
-                <Select id="tipoImovel" name="tipoImovel" value={formData.tipoImovel} onChange={handleChange} required>
-                  {PROPERTY_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
-                </Select>
-              </FormField>
-              <FormField label="Área do Terreno (m²)" htmlFor="areaTerreno">
-                <Input type="text" id="areaTerreno" name="areaTerreno" value={formData.areaTerreno} onChange={handleChange} placeholder='Ex: 300 ou "não se aplica"' />
-              </FormField>
-              <FormField label="Área Construída (m²)" htmlFor="areaConstruida">
-                <Input type="text" id="areaConstruida" name="areaConstruida" value={formData.areaConstruida} onChange={handleChange} placeholder='Ex: 150 ou "não se aplica"' />
-              </FormField>
-              <FormField label="Idade da Construção (anos)" htmlFor="idadeConstrucao">
-                <Input type="text" id="idadeConstrucao" name="idadeConstrucao" value={formData.idadeConstrucao} onChange={handleChange} placeholder="Aproximada" />
-              </FormField>
-              <FormField label="O Imóvel está Ocupado ou Desocupado?" htmlFor="ocupacao">
-                 <Select id="ocupacao" name="ocupacao" value={formData.ocupacao} onChange={handleChange} required>
-                  {OCCUPANCY_STATUSES.map(status => <option key={status} value={status}>{status}</option>)}
-                </Select>
-              </FormField>
-              <FormField label="Nome do Condomínio" htmlFor="nomeCondominio">
-                <Input type="text" id="nomeCondominio" name="nomeCondominio" value={formData.nomeCondominio} onChange={handleChange} placeholder='"N/A" se não se aplica' />
-              </FormField>
-              <FormField label="Estado Geral do Imóvel" htmlFor="estadoGeral" className="md:col-span-3">
-                <Textarea id="estadoGeral" name="estadoGeral" value={formData.estadoGeral} onChange={handleChange} placeholder="Descrição das condições gerais, conservação, etc." required />
-              </FormField>
+                <FormControl label="Documentos Disponíveis" htmlFor="documentosDisponiveis">
+                    <div className="space-y-2 bg-gray-700/50 p-3 rounded-md">
+                        {DOCUMENTOS_OPTIONS.map(doc => (
+                           <div key={doc} className="flex items-center">
+                               <input id={`doc-${doc}`} type="checkbox" value={doc} onChange={handleMultiCheckboxChange} checked={formData.documentosDisponiveis.includes(doc)} className="h-4 w-4 rounded border-gray-500 text-purple-600 focus:ring-purple-500"/>
+                               <label htmlFor={`doc-${doc}`} className="ml-2 text-sm text-gray-200">{doc}</label>
+                           </div>
+                        ))}
+                    </div>
+                </FormControl>
+                <FormControl label="Situação dos Documentos" htmlFor="situacaoDocumentos">
+                    <select id="situacaoDocumentos" name="situacaoDocumentos" value={formData.situacaoDocumentos} onChange={handleChange} className={selectStyles} required>
+                        <option value="" disabled>Selecione...</option>
+                        {SITUACAO_DOCUMENTOS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    </select>
+                </FormControl>
+                <FormControl label="Finalidade da Avaliação" htmlFor="finalidade">
+                    <select id="finalidade" name="finalidade" value={formData.finalidade} onChange={handleChange} className={selectStyles} required>
+                        <option value="" disabled>Selecione...</option>
+                        {FINALIDADE_AVALIACAO_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    </select>
+                </FormControl>
             </div>
-          </fieldset>
+          </section>
 
-          <fieldset className="border border-slate-700 rounded-lg p-6">
-            <legend className="px-2 text-lg font-semibold text-cyan-400">Documentação e Finalidade</legend>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <FormField label="Documentos Disponíveis" htmlFor="documentosDisponiveis">
-                <Input type="text" id="documentosDisponiveis" name="documentosDisponiveis" value={formData.documentosDisponiveis} onChange={handleChange} placeholder='Ex: Matrícula, IPTU (separados por vírgula)' />
-              </FormField>
-              <FormField label="Situação dos Documentos" htmlFor="situacaoDocumentos">
-                <Select id="situacaoDocumentos" name="situacaoDocumentos" value={formData.situacaoDocumentos} onChange={handleChange} required>
-                  {DOCUMENT_STATUSES.map(status => <option key={status} value={status}>{status}</option>)}
-                </Select>
-              </FormField>
-              <FormField label="Finalidade da Avaliação" htmlFor="finalidadeAvaliacao" className="md:col-span-2">
-                <Select id="finalidadeAvaliacao" name="finalidadeAvaliacao" value={formData.finalidadeAvaliacao} onChange={handleChange} required>
-                  {EVALUATION_PURPOSES.map(purpose => <option key={purpose} value={purpose}>{purpose}</option>)}
-                </Select>
-              </FormField>
-            </div>
-          </fieldset>
-          
-           <fieldset className="border border-slate-700 rounded-lg p-6">
-            <legend className="px-2 text-lg font-semibold text-cyan-400">Informações Adicionais</legend>
-            <div className="grid grid-cols-1 gap-6">
-              <FormField label="Links de Fotos do Imóvel" htmlFor="linksFotos">
-                <Input type="text" id="linksFotos" name="linksFotos" value={formData.linksFotos} onChange={handleChange} placeholder='Cole os links aqui, separados por vírgula' />
-              </FormField>
-              <FormField label="Detalhes Adicionais (opcional)" htmlFor="detalhesAdicionais">
-                <Textarea id="detalhesAdicionais" name="detalhesAdicionais" value={formData.detalhesAdicionais} onChange={handleChange} placeholder="Inclua qualquer outra informação que julgar relevante."/>
-              </FormField>
-            </div>
-          </fieldset>
-          
-          <div className="flex flex-col items-center gap-4 pt-4">
-            {submissionStatus === 'error' && (
-              <p className="text-red-400 bg-red-900/30 px-4 py-2 rounded-lg text-center">{errorMessage}</p>
-            )}
-             {submissionStatus === 'success' && (
-              <p className="text-green-400 bg-green-900/30 px-4 py-2 rounded-lg text-center">Formulário enviado com sucesso! Entraremos em contato em breve.</p>
-            )}
+           {/* Informações Adicionais */}
+           <section>
+              <h2 className={sectionTitleStyles}><InfoIcon />Informações Adicionais</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <FormControl label="Links de Fotos do Imóvel" htmlFor="linksFotos" icon={<CameraIcon/>}>
+                    <textarea id="linksFotos" name="linksFotos" value={formData.linksFotos} onChange={handleChange} rows={4} className={inputStyles} placeholder="Cole um link por linha (ex: Google Drive, Dropbox) ou informe 'nenhum'"></textarea>
+                 </FormControl>
+                 <FormControl label="Detalhes Adicionais (Opcional)" htmlFor="detalhesAdicionais" icon={<InfoIcon/>}>
+                    <textarea id="detalhesAdicionais" name="detalhesAdicionais" value={formData.detalhesAdicionais} onChange={handleChange} rows={4} className={inputStyles} placeholder="Qualquer outra informação relevante que deseje incluir."></textarea>
+                 </FormControl>
+              </div>
+           </section>
 
-            <button
-              type="submit"
-              disabled={submissionStatus === 'submitting'}
-              className={`w-full max-w-md flex items-center justify-center font-bold py-3 px-6 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed ${
-                submissionStatus === 'success' ? 'bg-green-600 hover:bg-green-700 text-white' : 
-                submissionStatus === 'error' ? 'bg-red-600 hover:bg-red-700 text-white' : 
-                'bg-cyan-600 hover:bg-cyan-700 text-white shadow-lg shadow-cyan-500/30'
-              }`}
-            >
-              {renderSubmitButtonContent()}
+          {/* Botão de Envio */}
+          <div className="text-center pt-4">
+              {formStatus.message && (
+                  <div className={`p-4 mb-4 text-sm rounded-lg ${
+                      formStatus.type === 'success' ? 'bg-green-800 text-green-200' :
+                      formStatus.type === 'error' ? 'bg-red-800 text-red-200' : 'bg-blue-800 text-blue-200'
+                  }`} role="alert">
+                      {formStatus.message}
+                  </div>
+              )}
+            <button type="submit" disabled={formStatus.type === 'loading'} className="inline-flex items-center justify-center w-full md:w-auto px-12 py-3 text-lg font-bold text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-4 focus:ring-purple-500/50 disabled:bg-purple-800 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 shadow-lg shadow-purple-500/30">
+              {formStatus.type === 'loading' ? <><SpinnerIcon /> Enviando...</> : 'Enviar Solicitação'}
             </button>
           </div>
         </form>
