@@ -96,7 +96,7 @@ const App: React.FC = () => {
 
     // After successful Supabase submission, send to webhook
     try {
-        const webhookResponse = await fetch('https://primary-production-76569.up.railway.app/webhook/formulario', {
+        const webhookResponse = await fetch('https://n8n.intelektus.tech/webhook/formulario', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
