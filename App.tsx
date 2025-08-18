@@ -2,8 +2,8 @@
 import React, { useState, useCallback } from 'react';
 import { supabase } from './services/supabaseClient';
 import { FormData, FormStatus } from './types';
-import { TIPO_IMOVEL_OPTIONS, SITUACAO_DOCUMENTOS_OPTIONS, FINALIDADE_AVALIACAO_OPTIONS, OCUPADO_OPTIONS, DOCUMENTOS_OPTIONS, TIPO_CLIENTE_OPTIONS } from './constants';
-import { UserIcon, PhoneIcon, HomeIcon, BuildingIcon, DocumentIcon, CameraIcon, InfoIcon, SpinnerIcon } from './components/Icons';
+import { TIPO_IMOVEL_OPTIONS, SITUACAO_DOCUMENTOS_OPTIONS, FINALIDADE_AVALIACAO_OPTIONS, OCUPADO_OPTIONS, DOCUMENTOS_OPTIONS, TIPO_CLIENTE_OPTIONS, UF_OPTIONS } from './constants';
+import { UserIcon, PhoneIcon, HomeIcon, BuildingIcon, DocumentIcon, CameraIcon, InfoIcon, SpinnerIcon, CheckCircleIcon } from './components/Icons';
 import FormControl from './components/FormControl';
 
 const initialFormData: FormData = {
@@ -63,10 +63,9 @@ const App: React.FC = () => {
     e.preventDefault();
     setFormStatus({ type: 'loading', message: 'Enviando...' });
 
-    // This object matches the Supabase table schema, including the new 'tipo_cliente' column.
     const submissionData = {
         nome_completo: formData.nomeSolicitante,
-        tipo_cliente: formData.tipoCliente, // Mapped to the new database column
+        tipo_cliente: formData.tipoCliente,
         endereco_completo: `${formData.logradouro}, nº ${formData.numero}, ${formData.bairro}, ${formData.cidade} - ${formData.uf}, CEP: ${formData.cep}`,
         tipo_imovel: formData.tipoImovel,
         area_terreno: formData.areaTerrenoNA ? null : Number(formData.areaTerreno) || null,
@@ -82,11 +81,9 @@ const App: React.FC = () => {
         links_fotos: formData.linksFotos.split('\n').filter(link => link.trim() !== ''),
         nome_condominio: formData.condominioNA ? null : formData.nomeCondominio,
         condominio_na: formData.condominioNA,
-        // The 'whatsapp' field is not in the schema, so we prepend it to 'detalhes_adicionais'.
         detalhes_adicionais: `Whatsapp: ${formData.whatsapp}${formData.detalhesAdicionais ? `\n\n${formData.detalhesAdicionais}` : ''}`,
     };
     
-    // The correct table name is 'avaliacoes_imoveis'
     const { error } = await supabase.from('avaliacoes_imoveis').insert([submissionData]);
 
     if (error) {
@@ -94,7 +91,6 @@ const App: React.FC = () => {
         return;
     }
 
-    // After successful Supabase submission, send to webhook
     try {
         const webhookResponse = await fetch('https://n8n.intelektus.tech/webhook/formulario', {
             method: 'POST',
@@ -105,7 +101,6 @@ const App: React.FC = () => {
         });
 
         if (!webhookResponse.ok) {
-            // Log webhook error but still show success to the user as the data was saved
             console.error('Webhook failed:', webhookResponse.statusText);
             setFormStatus({ type: 'success', message: 'Formulário enviado com sucesso, mas houve um problema na notificação. Já recebemos seus dados.' });
         } else {
@@ -115,13 +110,32 @@ const App: React.FC = () => {
         console.error('Error sending to webhook:', webhookError);
         setFormStatus({ type: 'success', message: 'Formulário enviado com sucesso, mas houve um problema na notificação. Já recebemos seus dados.' });
     }
-    
-    setFormData(initialFormData);
   };
   
+  const handleResetForm = useCallback(() => {
+    setFormData(initialFormData);
+    setFormStatus({ type: 'idle', message: '' });
+  }, []);
+
   const inputStyles = "w-full bg-gray-700 border border-gray-600 text-white rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-200 p-2.5";
   const selectStyles = inputStyles + " appearance-none";
   const sectionTitleStyles = "text-xl font-bold text-purple-300 border-b-2 border-purple-500/30 pb-2 mb-6 flex items-center gap-3";
+
+  if (formStatus.type === 'success') {
+    return (
+      <div className="min-h-screen bg-gray-900 text-gray-200 flex items-center justify-center p-4 font-sans">
+        <div className="w-full max-w-md mx-auto bg-gray-800/50 backdrop-blur-sm p-8 rounded-2xl shadow-2xl shadow-purple-900/20 border border-purple-500/20 text-center animate-fade-in-up">
+          <div className="flex justify-center mb-6">
+              <CheckCircleIcon className="w-24 h-24 text-green-400" />
+          </div>
+          <h1 className="text-3xl font-extrabold text-white mb-3">Concluído! ✅</h1>
+          <p className="text-purple-300 text-lg mb-8">
+            Recebemos sua solicitação e em breve entraremos em contato. 🚀
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-200 flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans">
@@ -173,7 +187,10 @@ const App: React.FC = () => {
               </FormControl>
               <div className="grid grid-cols-2 gap-4">
                  <FormControl label="UF" htmlFor="uf">
-                  <input type="text" id="uf" name="uf" value={formData.uf} onChange={handleChange} className={inputStyles} maxLength={2} required />
+                  <select id="uf" name="uf" value={formData.uf} onChange={handleChange} className={selectStyles} required>
+                    <option value="" disabled>Selecione...</option>
+                    {UF_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  </select>
                 </FormControl>
                 <FormControl label="CEP" htmlFor="cep">
                   <input type="text" id="cep" name="cep" value={formData.cep} onChange={handleChange} className={inputStyles} required />
@@ -276,7 +293,6 @@ const App: React.FC = () => {
           <div className="text-center pt-4">
               {formStatus.message && (
                   <div className={`p-4 mb-4 text-sm rounded-lg ${
-                      formStatus.type === 'success' ? 'bg-green-800 text-green-200' :
                       formStatus.type === 'error' ? 'bg-red-800 text-red-200' : 'bg-blue-800 text-blue-200'
                   }`} role="alert">
                       {formStatus.message}
