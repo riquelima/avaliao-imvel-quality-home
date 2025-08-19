@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import type { FormData, Database } from '@/types';
-import { UFS, PROPERTY_TYPES, DOCUMENT_STATUSES, FINALIDADE_AVALIACAO_OPTIONS, OCCUPANCY_STATUSES } from '@/constants';
+import { Database } from '@/lib/supabase';
+import { UFS, PROPERTY_TYPES, DOCUMENT_STATUSES, FINALIDADE_AVALIACAO_OPTIONS, OCCUPANCY_STATUSES, EVALUATION_PURPOSES } from '@/constants';
 import FormField from '@/components/FormField';
 import Input from '@/components/Input';
 import Select from '@/components/Select';
