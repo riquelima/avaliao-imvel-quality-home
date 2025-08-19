@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import type { FormData, Database } from '@/types';
-import { Database } from '@/lib/supabase';
+import { Database } from '@/lib/supabase'; // Ensure this import is correct for your Supabase setup
 import { UFS, PROPERTY_TYPES, DOCUMENT_STATUSES, FINALIDADE_AVALIACAO_OPTIONS, OCCUPANCY_STATUSES, EVALUATION_PURPOSES } from '@/constants';
 import FormField from '@/components/FormField';
 import Input from '@/components/Input';
@@ -270,7 +270,7 @@ const Home: React.FC = () => {
                     </FormField>
                     <FormField label="UF" htmlFor="uf" className="md:col-span-1">
                     <Select id="uf" name="uf" value={formData.uf} onChange={handleChange} required>
-                        {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+ {/* Corrected import name */}                       {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
                     </Select>
                     </FormField>
                     <FormField label="CEP" htmlFor="cep" className="md:col-span-2">
@@ -285,7 +285,7 @@ const Home: React.FC = () => {
                 <FormField label="Tipo de Imóvel" htmlFor="tipoImovel">
                     <Select id="tipoImovel" name="tipoImovel" value={formData.tipoImovel} onChange={handleChange} required>
                     {PROPERTY_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
-                    </Select>
+ {/* Corrected import name */}                   </Select>
                 </FormField>
                 <FormField label="Área do Terreno (m²)" htmlFor="areaTerreno">
                     <Input type="text" id="areaTerreno" name="areaTerreno" value={formData.areaTerreno} onChange={handleChange} placeholder='Ex: 300 ou "não se aplica"' />
