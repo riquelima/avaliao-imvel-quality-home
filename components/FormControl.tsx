@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface FormControlProps {
@@ -11,7 +10,7 @@ interface FormControlProps {
 const FormControl: React.FC<FormControlProps> = ({ label, htmlFor, icon, children }) => {
   return (
     <div className="relative">
-      <label htmlFor={htmlFor} className="flex items-center gap-2 text-sm font-medium text-purple-200 mb-2">
+      <label htmlFor={htmlFor} className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
         {icon}
         {label}
       </label>

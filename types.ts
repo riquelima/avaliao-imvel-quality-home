@@ -19,7 +19,6 @@ export interface FormData {
   documentosDisponiveis: string[];
   situacaoDocumentos: 'regular' | 'pendente' | 'outro' | '';
   finalidade: 'venda' | 'partilha' | 'judicial' | 'outro' | '';
-  linksFotos: string;
   ocupado: 'ocupado' | 'desocupado' | '';
   nomeCondominio: string;
   condominioNA: boolean;
