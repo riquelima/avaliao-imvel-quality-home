@@ -2,11 +2,10 @@
 
 import React, { useState } from 'react';
 import type { FormData, Database } from '@/types';
-import { Database } from '@/lib/supabase'; // Ensure this import is correct for your Supabase setup
-import { UFS, PROPERTY_TYPES, DOCUMENT_STATUSES, FINALIDADE_AVALIACAO_OPTIONS, OCCUPANCY_STATUSES, EVALUATION_PURPOSES } from '@/constants';
-import FormField from '@/components/FormField';
-import Input from '@/components/Input';
-import Select from '@/components/Select';
+import { UF_OPTIONS, TIPO_IMOVEL_OPTIONS, SITUACAO_DOCUMENTOS_OPTIONS, FINALIDADE_AVALIACAO_OPTIONS, OCUPADO_OPTIONS } from '@/constants';
+import FormField from '@/components/FormControl';
+import Input from '@/components/ui/input';
+import Select from '@/components/ui/select';
 import Textarea from '@/components/Textarea';
 import { supabase } from '@/lib/supabase';
 
@@ -270,7 +269,7 @@ const Home: React.FC = () => {
                     </FormField>
                     <FormField label="UF" htmlFor="uf" className="md:col-span-1">
                     <Select id="uf" name="uf" value={formData.uf} onChange={handleChange} required>
- {/* Corrected import name */}                       {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                       {UF_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </Select>
                     </FormField>
                     <FormField label="CEP" htmlFor="cep" className="md:col-span-2">
@@ -284,8 +283,8 @@ const Home: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <FormField label="Tipo de Imóvel" htmlFor="tipoImovel">
                     <Select id="tipoImovel" name="tipoImovel" value={formData.tipoImovel} onChange={handleChange} required>
-                    {PROPERTY_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
- {/* Corrected import name */}                   </Select>
+                    {TIPO_IMOVEL_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                   </Select>
                 </FormField>
                 <FormField label="Área do Terreno (m²)" htmlFor="areaTerreno">
                     <Input type="text" id="areaTerreno" name="areaTerreno" value={formData.areaTerreno} onChange={handleChange} placeholder='Ex: 300 ou "não se aplica"' />
@@ -298,7 +297,7 @@ const Home: React.FC = () => {
                 </FormField>
                 <FormField label="O Imóvel está Ocupado ou Desocupado?" htmlFor="ocupacao">
                     <Select id="ocupacao" name="ocupacao" value={formData.ocupacao} onChange={handleChange} required>
-                    {OCCUPANCY_STATUSES.map(status => <option key={status} value={status}>{status}</option>)}
+                    {OCUPADO_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </Select>
                 </FormField>
                 <FormField label="Nome do Condomínio" htmlFor="nomeCondominio">
@@ -318,12 +317,12 @@ const Home: React.FC = () => {
                 </FormField>
                 <FormField label="Situação dos Documentos" htmlFor="situacaoDocumentos">
                     <Select id="situacaoDocumentos" name="situacaoDocumentos" value={formData.situacaoDocumentos} onChange={handleChange} required>
-                    {DOCUMENT_STATUSES.map(status => <option key={status} value={status}>{status}</option>)}
+                    {SITUACAO_DOCUMENTOS_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </Select>
                 </FormField>
                 <FormField label="Finalidade da Avaliação" htmlFor="finalidadeAvaliacao" className="md:col-span-2">
                     <Select id="finalidadeAvaliacao" name="finalidadeAvaliacao" value={formData.finalidadeAvaliacao} onChange={handleChange} required>
-                    {EVALUATION_PURPOSES.map(purpose => <option key={purpose} value={purpose}>{purpose}</option>)}
+                    {FINALIDADE_AVALIACAO_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </Select>
                 </FormField>
                 </div>
