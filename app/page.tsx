@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import type { FormData, Database } from '@/types';
-import { UFS, PROPERTY_TYPES, DOCUMENT_STATUSES, EVALUATION_PURPOSES, OCCUPANCY_STATUSES } from '@/constants';
+import { UFS, PROPERTY_TYPES, DOCUMENT_STATUSES, FINALIDADE_AVALIACAO_OPTIONS, OCCUPANCY_STATUSES } from '@/constants';
 import FormField from '@/components/FormField';
 import Input from '@/components/Input';
 import Select from '@/components/Select';
