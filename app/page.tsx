@@ -7,7 +7,7 @@ import FormField from '@/components/FormField';
 import Input from '@/components/Input';
 import Select from '@/components/Select';
 import Textarea from '@/components/Textarea';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase';
 
 
 const Home: React.FC = () => {

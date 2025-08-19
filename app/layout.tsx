@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import '@/styles/globals.css';
+import '@/app/globals.css';
 
 export const metadata: Metadata = {
   title: 'Quality Home Avalia',
